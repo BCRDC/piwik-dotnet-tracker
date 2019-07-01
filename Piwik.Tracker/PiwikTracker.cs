@@ -20,6 +20,9 @@ namespace Piwik.Tracker
     using System.Web;
     using System.Web.Script.Serialization;
     using System.Text.RegularExpressions;
+    using Piwik.Tracker.Client;
+    using System.Net.Http;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// PiwikTracker implements the Piwik Tracking Web API.
@@ -100,6 +103,9 @@ namespace Piwik.Tracker
     /// </summary>
     public class PiwikTracker
     {
+        private readonly MyHttp _http = new MyHttp();
+
+
         /// <summary>
         /// API Version
         /// </summary>
@@ -602,6 +608,14 @@ namespace Piwik.Tracker
         {
             var url = GetUrlTrackEvent(category, action, name, value);
             return SendRequest(url);
+        }
+
+
+
+        public async Task<TrackingResponse> DoTrackEventAsync(string category, string action, string name = "", string value = "")
+        {
+            var url = GetUrlTrackEvent(category, action, name, value);
+            return await SendRequestAsync(url);
         }
 
         /// <summary>
@@ -1462,6 +1476,47 @@ namespace Piwik.Tracker
                 return new TrackingResponse { HttpStatusCode = result.StatusCode, RequestedUrl = url };
             }
         }
+
+
+
+
+        private async Task<TrackingResponse> SendRequestAsync(string url, string data = null, bool force = false)
+        {
+            // if doing a bulk request, store the url
+            if (_doBulkRequests && !force)
+            {
+                _storedTrackingActions.Add(
+                    url
+                    + (!string.IsNullOrEmpty(_userAgent) ? "&ua=" + UrlEncode(_userAgent) : "")
+                    + (!string.IsNullOrEmpty(_acceptLanguage) ? "&lang=" + UrlEncode(_acceptLanguage) : "")
+                );
+
+                // Clear custom variables so they don't get copied over to other users in the bulk request
+                ClearCustomVariables();
+                ClearCustomTrackingParameters();
+                _userAgent = null;
+                _acceptLanguage = null;
+                return null;
+            }
+
+
+            var requestNew = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Headers = {
+                    { HttpRequestHeader.Accept.ToString(), "application/json" },
+                   { "Accept-Language", _acceptLanguage },
+                    //{ "MS-CorrelationId", Guid.NewGuid().ToString() },
+                    //{ "MS-Contract-Version", "v1" },
+                },
+                
+                Content = new StringContent(data ?? "")
+            };
+
+
+            var response = await this._http.DoRequestAsync(requestNew);
+            return new TrackingResponse { HttpStatusCode = response.StatusCode, RequestedUrl = url };
+        }
+
 
         /// <summary>
         /// Returns the base URL for the piwik server.

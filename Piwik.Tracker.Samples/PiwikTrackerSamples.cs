@@ -6,15 +6,33 @@ using System.IO;
 namespace Piwik.Tracker.Samples
 {
     using System.Collections.Generic;
+    using System.Threading.Tasks;
 
     internal class PiwikTrackerSamples
     {
         private const string UA = "Firefox";
-        private static readonly string PiwikBaseUrl = "http://piwik.local";
+        private static readonly string PiwikBaseUrl = "https://analysis-matomo.chinacloudsites.cn";
         private static readonly int SiteId = 1;
 
         private static void Main(string[] args)
         {
+
+            Task.Run( async () => {
+
+                while (true)
+                {
+                    await TrackSongPlaybackAsync();
+
+                    await Task.Delay(new TimeSpan(0, 0, 4));
+
+                }
+
+                
+                
+                //await TrackSongPlaybackAsync();
+                //await TrackSongPlaybackAsync();
+                //await TrackSongPlaybackAsync();
+            }).Wait();
             // ** PAGE VIEW **
             //            RecordSimplePageView();
             //            RecordSimplePageViewWithCustomProperties();
@@ -478,6 +496,18 @@ namespace Piwik.Tracker.Samples
             var response = piwikTracker.DoTrackEvent("music", "play", "Eye Of The Tiger");
 
             DisplayDebugInfo(response);
+        }
+
+
+        static private async Task TrackSongPlaybackAsync()
+        {
+            var piwikTracker = new PiwikTracker(SiteId, PiwikBaseUrl);
+            piwikTracker.SetUserAgent(UA);
+
+            var response = await piwikTracker.DoTrackEventAsync("musicniubi", "play1", "Eye Of The Tiger");
+
+            DisplayDebugInfo(response);
+            
         }
 
         static private void DisplayDebugInfo(TrackingResponse response)
